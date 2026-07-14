@@ -231,6 +231,11 @@ body{
   #final-canvas{max-height:60vh}
   .frame-grid{max-height:340px}
 }
+/* HP vertikal: preview kamera ikut orientasi portrait supaya tidak gepeng/ke-crop aneh */
+@media (max-width:960px) and (orientation:portrait){
+  .cam-frame{aspect-ratio:3/4;max-width:min(100%, calc((100vh - 420px) * 3 / 4));}
+  .countdown{font-size:110px}
+}
 @media (max-width:520px){
   .brand h1 span{display:none}
   .filter-list{grid-template-columns:1fr}
@@ -721,7 +726,10 @@ async function startCamera(){
     return;
   }
   try{
-    stream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:960},facingMode:'user'}, audio:false});
+    const isPortrait = window.matchMedia && window.matchMedia('(orientation: portrait)').matches;
+    const idealW = isPortrait ? 960 : 1280;
+    const idealH = isPortrait ? 1280 : 960;
+    stream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:idealW},height:{ideal:idealH},facingMode:'user'}, audio:false});
     video.srcObject = stream;
 
     previewCanvas = document.getElementById('preview-canvas');
@@ -756,6 +764,14 @@ function stopCamera(){
 
 async function renderLoop() {
   if (!renderRunning) { return; }
+  if (video.readyState >= 2 && previewCanvas) {
+    // jaga dimensi preview = dimensi video asli (berubah saat HP diputar atau metadata telat)
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (vw > 0 && vh > 0 && (previewCanvas.width !== vw || previewCanvas.height !== vh)) {
+      previewCanvas.width = vw;
+      previewCanvas.height = vh;
+    }
+  }
   if (video.readyState >= 2 && previewCanvas && previewCanvas.width > 0) {
     const mode = currentFilter.mode || 'css';
     try {
@@ -1306,20 +1322,24 @@ function flashAndSnap(){
   flash.classList.remove('fire'); flash.offsetHeight; flash.classList.add('fire');
   const canvas = document.getElementById('capture-canvas');
   const ctx = canvas.getContext('2d');
-  const w = canvas.width, h = canvas.height;
   if (previewCanvas && previewCanvas.width > 0) {
-    // capture from preview canvas — semua efek (filter, blur latar, wajah binatang, overlay) sudah ada
-    ctx.drawImage(previewCanvas, 0, 0, w, h);
+    // KUNCI ANTI-GEPENG: ukuran capture = ukuran sumber apa adanya
+    // (di HP vertikal sumbernya portrait; jangan dipaksa ke kotak landscape)
+    canvas.width = previewCanvas.width;
+    canvas.height = previewCanvas.height;
+    ctx.drawImage(previewCanvas, 0, 0);
   } else {
-    // fallback kalau preview belum siap
+    // fallback kalau preview belum siap — tetap ikut dimensi video asli
+    const vw = video.videoWidth || 1280, vh = video.videoHeight || 960;
+    canvas.width = vw; canvas.height = vh;
     ctx.save();
     ctx.filter = (currentFilter.css && currentFilter.css !== 'none') ? currentFilter.css : 'none';
-    ctx.translate(w,0);
+    ctx.translate(vw,0);
     ctx.scale(-1,1);
-    ctx.drawImage(video, 0, 0, w, h);
+    ctx.drawImage(video, 0, 0, vw, vh);
     ctx.restore();
     ctx.filter = 'none';
-    if (currentFilter.overlay === 'wc2026') drawWCOverlay(ctx, w, h);
+    if (currentFilter.overlay === 'wc2026') drawWCOverlay(ctx, vw, vh);
   }
   shots.push(canvas.toDataURL('image/jpeg', 0.92));
 }
