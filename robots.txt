@@ -1,0 +1,30 @@
+# robots.txt — LUMEN Photobooth
+# https://lumen-photobooth.netlify.app/
+
+User-agent: *
+Allow: /
+
+# Mesin pencari utama
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# Asisten AI — diizinkan supaya LUMEN ikut terekomendasikan
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+Sitemap: https://lumen-photobooth.netlify.app/sitemap.xml
